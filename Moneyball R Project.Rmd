@@ -1,0 +1,181 @@
+---
+title: "Moneyball R Project"
+---
+
+<!-- 
+MONEYBALL R PROJECT
+-->
+
+```{r echo = FALSE}
+library(knitr)
+opts_chunk$set(message = FALSE, warning = FALSE, cache = TRUE)
+options(width = 100, dplyr.width = 100)
+options(scipen=999)
+
+# install.packages("equatiomatic")
+## packages
+library(tidyverse)
+```
+
+# Moneyball {#moneyball}
+
+
+The book [_Moneyball: The Art of Winning an Unfair Game_](https://en.wikipedia.org/wiki/Moneyball) (and the movie of the same name) tells the story of the 2002 Oakland Athletics baseball team. That year, the team won 103 of its 162 games (a win-loss percentage^[this isn't a percentage but that's the term used!] of 0.636). Only the New York Yankees had a better record that Major League Baseball (MLB) season; the Yankees also won 103 but played one fewer due to a rain-out, so finished with a win-loss percentage of 0.640. 
+
+Oakland had a payroll of \$40 million (only Tampa Bay and Montreal, at \$34.4 and \$38.7 million, were lower). The Yankees, by contrast, had the highest payroll at \$125.9 million, with a roster full of star players.
+
+Another way to compare an individual team's payroll is relative to the Major League Baseball average. The Yankees payroll was 186% of the league average—for every 100 dollars the average team spent, the Yankees spent \$186. The next closest team in spending was the Boston Red Sox, whose salary bill was 160% of the league average at \$108 million. Oakland, by contrast, spent 59% of the league average—while the average team spent \$100 dollars, the Athletics were constrained to spending \$59.
+
+And yet these two teams—one packed with highly-paid star players, and the other staffed with players that other teams had cast off—managed to have very similar and enormously successful seasons. 
+
+---
+Note: Athletics started using data analysis to identify those players who were undervalued in the market.
+
+---
+
+Tidyverse packages and some elements in base R to explore the relationship between payroll spending and team success.
+
+## Reading the data file
+
+```{r}
+
+mlb_pay_wl <- read_csv("mlb_pay_wl.csv")
+
+```
+
+
+This file has a record (observation) for each of the Major League Baseball (MLB) teams for the seasons 1999 through 2019. This is 630 rows of data. 
+
+For each team season, the file has: 
+
+* the attendance per game ("attend_g")
+
+* the estimated payroll ("est_payroll")
+
+* the pay as a percent of the league ("pay_index"), where 100 is the league average for that year. A value of 110 would be 10 percent higher than the league average for the season; a value of 90 would be 10 percent lower.
+
+* wins and losses ("w" and "l"); counts of the number of games won and lost in that season. Note that the Major League Baseball season is 162 games long, but the sum of wins and losses isn't always 162. Sometimes teams play fewer because of cancellations due to weather, and they might play an extra game at the end of the season to determine which team will advance to the playoffs.
+
+* and the winning percentage ("w_l_percent") where 0.500 represents winning as many games as losing. The highest value in this period was the Seattle Mariners, whose win-loss "percentage" was 0.716 (71.6%) in 2001 (116 of 162 games). The worst team in the data was the Detroit Tigers in 2003, who _lost_ 119 of their 162 games (a percentage of 0.265).
+
+```{r}
+mlb_pay_wl
+```
+
+
+## Visualizing the data {#moneyball-viz}
+
+Exploring the relationship between payroll and wins. Does paying star players always lead to success? 
+
+
+
+```{r}
+ggplot(mlb_pay_wl, aes(x = pay_index, y = w_l_percent)) + 
+  geom_point()
+
+```
+
+
+That's a lot of points in this plot. To be able to understand better in the plot below there are two lines on the plot. 
+
+The red line runs vertically at the "100" point on the X axis. The teams to the left of the line spent below the league average for that season; the teams to the right spent more. There have been cases when some teams spent twice as much as the league average.
+
+The blue line runs horizontally at the "0.5" point on the Y axis. Above this line, the teams won more games than they lost. Below the line, they lost more games than they won.
+
+```{r}
+ggplot(mlb_pay_wl, aes(x = pay_index, y = w_l_percent)) + 
+  geom_point() +
+  geom_vline(xintercept = 100, colour = "red", size = 2) +
+  geom_hline(yintercept = 0.5, colour = "blue", size = 2)
+
+```
+
+
+
+
+Using regression modeling skills to see if there's a consistent relationship with paying star players lots of money, and winning lots of games.
+
+Visualizing the relationship using the `geom_smooth(method = lm)` function. The "method = lm" part refers to a linear model—that is to say, a regression model.
+
+```{r}
+ggplot(mlb_pay_wl, aes(x = pay_index, y = w_l_percent)) + 
+  geom_point() +
+  geom_smooth(method = lm)
+
+```
+
+
+## The regression model {#moneyball-regression}
+
+We can use the `lm()` method to create our regression statistics.
+
+```{r}
+## running the regression model, assign the output to an object
+model_mlb_pay_wl <- lm(w_l_percent ~ pay_index, data = mlb_pay_wl)
+
+## a glance at the regression results
+model_mlb_pay_wl
+
+```
+
+
+
+The equation calculated by the `lm()` function, to create the model `model_mlb_pay_wl`, is:
+
+```{r, echo=FALSE}
+equatiomatic::extract_eq(model_mlb_pay_wl, 
+                         use_coefs = TRUE,
+                         coef_digits = 4)
+```
+
+
+Getting more details from the statistical model by using the `summary()` function, including the P value and the R-squared value:
+
+```{r}
+summary(model_mlb_pay_wl)
+
+```
+
+
+
+
+
+  Using the data in the "mlb_pay_wl.csv" file to visualize the relationship between team wins (or winning percentage) and attendance.
+  
+```{r}
+
+ggplot(mlb_pay_wl, aes(x = w_l_percent, y = attend_g)) + 
+  geom_point() +
+  geom_vline(xintercept = 0.5, colour = "red", linewidth = 2) +
+  geom_hline(yintercept = 30000, colour = "blue", linewidth = 2)
+ 
+
+```
+  
+  
+
+ Using "mlb_pay_wl.csv" file to create a regression model that evaluates the relationship between team success on the field and attendance. 
+ 
+```{r}
+ggplot(mlb_pay_wl, aes(x = w_l_percent, y = attend_g)) + 
+  geom_point() +
+  geom_smooth(method = lm)
+
+
+```
+   
+   
+   
+
+Describing and Analyzing the coefficients, the R-squared value, and the P value.
+   
+```{r}
+
+model_mlb_pay_wl <- lm(attend_g ~ w_l_percent, data = mlb_pay_wl)
+
+
+model_mlb_pay_wl
+
+summary(model_mlb_pay_wl)
+
+```
